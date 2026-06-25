@@ -731,12 +731,18 @@ a {
     padding: 16px;
     gap: 4px;
     border-bottom: 1px solid var(--border);
-    transform: translateY(-120%);
-    transition: transform 0.3s ease;
+    transform: translateY(-100%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s;
   }
 
   .nav-links.open {
     transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .about-card {
