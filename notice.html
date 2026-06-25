@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提示</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .notice-icon {
+      font-size: 5rem;
+      margin-bottom: 20px;
+      animation: noticePulse 2.5s ease-in-out infinite;
+    }
+    @keyframes noticePulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+    .notice-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .notice-desc {
+      color: var(--text-light);
+      font-size: 1rem;
+      margin-bottom: 32px;
+    }
+    .notice-btn {
+      display: inline-block;
+      padding: 12px 36px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .notice-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">MySpace</a>
+      <ul class="nav-links">
+        <li><a href="index.html#about" class="nav-item">关于我</a></li>
+        <li><a href="index.html#portfolio" class="nav-item">作品集</a></li>
+        <li><a href="index.html#guestbook" class="nav-item">留言板</a></li>
+        <li><a href="index.html#contact" class="nav-item">联系我</a></li>
+      </ul>
+      <button class="menu-toggle" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container" style="text-align: center; padding-top: 20vh;">
+      <div class="notice-icon">🔒</div>
+      <h1 class="notice-title">暂时没有向您开放</h1>
+      <p class="notice-desc">如有疑问，请联系站点管理员</p>
+      <a href="index.html" class="notice-btn">返回首页</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>&copy; 2026 你的名字. All rights reserved.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
