@@ -112,16 +112,19 @@ function copyText(elementId) {
   });
 }
 
-// ===== 留言板 =====
+// ===== 留言板（YesAPI） =====
+const YESAPI_APP_KEY = 'C4E8DAB50F101FEF0A1FCF65CC21A7C1';
+const YESAPI_SECRET = '0a8CLQRiXcJ1BHbpgCMiEN6EgZQGaUidFKFxYHqLAcfV039LjRuVNr4N827ieZhf';
+const YESAPI_BASE = 'https://hn216.api.yesapi.cn/api.php';
+const TABLE_NAME = 'message';
+
 const form = document.getElementById('guestbookForm');
 const messagesList = document.getElementById('messagesList');
 
-function loadMessages() {
-  const saved = localStorage.getItem('guestbook_messages');
-  if (saved) {
-    const messages = JSON.parse(saved);
-    messages.forEach(msg => addMessageToDOM(msg, false));
-  }
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 function addMessageToDOM(msg, prepend = true) {
@@ -129,8 +132,8 @@ function addMessageToDOM(msg, prepend = true) {
   card.className = 'message-card';
   card.innerHTML = `
     <div class="message-header">
-      <span class="message-author">${escapeHtml(msg.name)}</span>
-      <span class="message-time">${msg.time}</span>
+      <span class="message-author">${escapeHtml(msg.nick_name)}</span>
+      <span class="message-time">${msg.create_at || ''}</span>
     </div>
     <p class="message-content">${escapeHtml(msg.content)}</p>
   `;
@@ -141,13 +144,34 @@ function addMessageToDOM(msg, prepend = true) {
   }
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+// 加载留言列表
+async function loadMessages() {
+  try {
+    const params = new URLSearchParams({
+      s: 'App.Table.GetList',
+      app_key: YESAPI_APP_KEY,
+      model_name: TABLE_NAME,
+      where: JSON.stringify([['id', '>', '0']]),
+      page: '1',
+      perpage: '50',
+      order_by: JSON.stringify({ id: 'DESC' })
+    });
+
+    const resp = await fetch(`${YESAPI_BASE}?${params}`);
+    const data = await resp.json();
+
+    if (data.ret === 200 && data.data && data.data.list) {
+      // 清空示例留言
+      messagesList.innerHTML = '';
+      data.data.list.forEach(msg => addMessageToDOM(msg, false));
+    }
+  } catch (err) {
+    console.warn('加载留言失败:', err);
+  }
 }
 
-form.addEventListener('submit', e => {
+// 发布留言
+form.addEventListener('submit', async e => {
   e.preventDefault();
   const name = document.getElementById('gbName').value.trim();
   const content = document.getElementById('gbMessage').value.trim();
@@ -156,14 +180,37 @@ form.addEventListener('submit', e => {
   const now = new Date();
   const time = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const msg = { name, content, time };
-  addMessageToDOM(msg);
+  const btn = form.querySelector('.btn-submit');
+  btn.disabled = true;
+  btn.textContent = '发布中...';
 
-  const saved = JSON.parse(localStorage.getItem('guestbook_messages') || '[]');
-  saved.unshift(msg);
-  localStorage.setItem('guestbook_messages', JSON.stringify(saved));
+  try {
+    const params = new URLSearchParams({
+      s: 'App.Table.Create',
+      app_key: YESAPI_APP_KEY,
+      model_name: TABLE_NAME,
+      data: JSON.stringify({ nick_name: name, content: content, create_at: time })
+    });
 
-  form.reset();
+    const resp = await fetch(YESAPI_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const result = await resp.json();
+
+    if (result.ret === 200) {
+      addMessageToDOM({ nick_name: name, content: content, create_at: time }, true);
+      form.reset();
+    } else {
+      alert('发布失败，请稍后重试');
+    }
+  } catch (err) {
+    alert('网络错误，请稍后重试');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '发布留言';
+  }
 });
 
 loadMessages();
