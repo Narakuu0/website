@@ -232,8 +232,14 @@ async function loadMessages() {
 }
 
 // ---- 发布留言 ----
+let lastSubmitTime = 0;
 form.addEventListener('submit', async e => {
   e.preventDefault();
+  const now = Date.now();
+  if (now - lastSubmitTime < 20000) {
+    alert('发帖太频繁，请 20 秒后再试');
+    return;
+  }
   const name = document.getElementById('gbName').value.trim();
   const content = document.getElementById('gbMessage').value.trim();
   const contact = document.getElementById('gbContact').value.trim();
@@ -253,6 +259,7 @@ form.addEventListener('submit', async e => {
       body: JSON.stringify({ nick_name: name, content, create_at, contact: contact || null })
     });
     if (!resp.ok) throw new Error(await resp.text());
+    lastSubmitTime = Date.now();
     form.reset();
     loadMessages(); // 回到第一页
   } catch (err) {
