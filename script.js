@@ -245,8 +245,8 @@ form.addEventListener('submit', async e => {
   const contact = document.getElementById('gbContact').value.trim();
   if (!name || !content) return;
 
-  const now = new Date();
-  const create_at = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const date = new Date();
+  const create_at = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
   const btn = form.querySelector('.btn-submit');
   btn.disabled = true;
