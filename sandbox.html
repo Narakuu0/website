@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ SANDBOX</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+      cursor: crosshair;
+      user-select: none;
+    }
+    canvas { display: block; }
+
+    /* HUD */
+    .hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-left, .hud-right {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .hud-line {
+      font-size: 11px;
+      color: rgba(0, 255, 200, 0.5);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(0, 255, 200, 0.3);
+    }
+    .hud-line.bright {
+      color: rgba(0, 255, 200, 0.85);
+      text-shadow: 0 0 12px rgba(0, 255, 200, 0.6);
+    }
+
+    /* Back button */
+    .back-btn {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 24px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+      text-decoration: none;
+      z-index: 20;
+      transition: all 0.3s;
+      backdrop-filter: blur(8px);
+    }
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.85);
+      border-color: rgba(0, 255, 200, 0.4);
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+    }
+
+    /* Mode selector */
+    .mode-bar {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+    }
+    .mode-btn {
+      padding: 8px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .mode-btn:hover {
+      color: rgba(255, 255, 255, 0.7);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: rgba(0, 255, 200, 0.5);
+      box-shadow: 0 0 12px rgba(0, 255, 200, 0.2);
+    }
+
+    /* Mode indicator */
+    .mode-display {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0;
+      color: rgba(255, 255, 255, 0);
+      letter-spacing: 12px;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 20;
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mode-display.flash {
+      font-size: 42px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    /* Controls hint */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .key-hint {
+      padding: 6px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 1px;
+      backdrop-filter: blur(4px);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .key-hint span {
+      color: rgba(0, 255, 200, 0.5);
+      font-weight: bold;
+    }
+
+    /* Canvas layers */
+    #trailCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.6;
+    }
+    #mainCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 2;
+    }
+
+    /* Overlays */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none;
+      z-index: 15;
+    }
+    .vignette {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+      z-index: 14;
+    }
+
+    /* Loading */
+    .loader {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 100;
+      transition: opacity 1s;
+    }
+    .loader.done { opacity: 0; pointer-events: none; }
+    .loader-text {
+      font-size: 14px;
+      color: rgba(0, 255, 200, 0.7);
+      letter-spacing: 6px;
+      animation: loadPulse 1s ease-in-out infinite;
+    }
+    @keyframes loadPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader" id="loader">
+    <div class="loader-text">INITIALIZING</div>
+  </div>
+
+  <canvas id="trailCanvas"></canvas>
+  <canvas id="mainCanvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <a href="index.html" class="back-btn">← HOME</a>
+
+  <div class="hud">
+    <div class="hud-left">
+      <div class="hud-line bright" id="hudMode">MODE: NEBULA</div>
+      <div class="hud-line" id="hudParticles">PARTICLES: 0</div>
+      <div class="hud-line" id="hudFps">FPS: 60</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-line" id="hudMouse">MOUSE: 0, 0</div>
+      <div class="hud-line" id="hudTime">UPTIME: 0s</div>
+      <div class="hud-line" id="hudEnergy">ENERGY: 100%</div>
+    </div>
+  </div>
+
+  <div class="mode-display" id="modeDisplay"></div>
+
+  <div class="mode-bar" id="modeBar">
+    <button class="mode-btn active" data-mode="0">NEBULA</button>
+    <button class="mode-btn" data-mode="1">FIREWORK</button>
+    <button class="mode-btn" data-mode="2">WARP</button>
+    <button class="mode-btn" data-mode="3">GEOMETRY</button>
+    <button class="mode-btn" data-mode="4">DNA</button>
+    <button class="mode-btn" data-mode="5">MATRIX</button>
+  </div>
+
+  <div class="controls">
+    <div class="key-hint"><span>CLICK</span> EXPLODE</div>
+    <div class="key-hint"><span>DRAG</span> VORTEX</div>
+    <div class="key-hint"><span>SPACE</span> WAVE</div>
+    <div class="key-hint"><span>R</span> RESET</div>
+  </div>
+
+  <script>
+    // ==================== SETUP ====================
+    const mainCanvas = document.getElementById('mainCanvas');
+    const trailCanvas = document.getElementById('trailCanvas');
+    const ctx = mainCanvas.getContext('2d');
+    const trailCtx = trailCanvas.getContext('2d');
+    let W, H;
+
+    function resize() {
+      W = mainCanvas.width = trailCanvas.width = window.innerWidth;
+      H = mainCanvas.height = trailCanvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // ==================== STATE ====================
+    const mouse = { x: W / 2, y: H / 2, down: false };
+    const modes = ['NEBULA', 'FIREWORK', 'WARP', 'GEOMETRY', 'DNA', 'MATRIX'];
+    let currentMode = 0;
+    let particles = [];
+    let energy = 100;
+    let startTime = Date.now();
+    let frameCount = 0;
+    let lastFpsTime = Date.now();
+    let fps = 60;
+    let waveTime = 0;
+    let waveActive = false;
+
+    // ==================== PALETTES ====================
+    const palettes = [
+      ['#00ffc8', '#00d4ff', '#7b61ff', '#ff6b9d'],
+      ['#ff4444', '#ffaa00', '#ffff00', '#ff66ff'],
+      ['#00ffff', '#0088ff', '#4400ff', '#ffffff'],
+      ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3'],
+      ['#00ff88', '#00ffcc', '#00ccff', '#0088ff'],
+      ['#00ff00', '#00cc00', '#009900', '#00ff66'],
+    ];
+    function getPalette() { return palettes[currentMode]; }
+    function randomColor() {
+      const p = getPalette();
+      return p[Math.floor(Math.random() * p.length)];
+    }
+
+    // ==================== PARTICLE ====================
+    class Particle {
+      constructor(x, y, opts = {}) {
+        this.x = x;
+        this.y = y;
+        this.vx = opts.vx ?? (Math.random() - 0.5) * 4;
+        this.vy = opts.vy ?? (Math.random() - 0.5) * 4;
+        this.life = opts.life ?? 1;
+        this.decay = opts.decay ?? (0.002 + Math.random() * 0.008);
+        this.size = opts.size ?? (1 + Math.random() * 3);
+        this.color = opts.color ?? randomColor();
+        this.angle = Math.random() * Math.PI * 2;
+        this.spin = opts.spin ?? (Math.random() - 0.5) * 0.1;
+        this.trail = [];
+        this.maxTrail = opts.trail ?? 8;
+        this.gravity = opts.gravity ?? 0;
+        this.friction = opts.friction ?? 0.99;
+        this.glow = opts.glow ?? false;
+        this.shape = opts.shape ?? 'circle';
+        this.text = opts.text ?? null;
+        this.pulse = opts.pulse ?? false;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+      }
+
+      update() {
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > this.maxTrail) this.trail.shift();
+
+        // Mouse interaction
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 250 && dist > 0) {
+          const force = (1 - dist / 250) * (mouse.down ? 0.15 : 0.04);
+          if (mouse.down) {
+            this.vx += -dy / dist * force * 3 + dx / dist * force * 0.5;
+            this.vy += dx / dist * force * 3 + dy / dist * force * 0.5;
+          } else {
+            this.vx += dx / dist * force;
+            this.vy += dy / dist * force;
+          }
+        }
+
+        if (waveActive) this.vy += Math.sin(this.x * 0.01 + waveTime) * 0.3;
+
+        this.vx *= this.friction;
+        this.vy *= this.friction;
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.angle += this.spin;
+        this.life -= this.decay;
+        this.pulsePhase += 0.1;
+
+        if (this.x < -50) this.x = W + 50;
+        if (this.x > W + 50) this.x = -50;
+        if (this.y < -50) this.y = H + 50;
+        if (this.y > H + 50) this.y = -50;
+      }
+
+      draw() {
+        const alpha = Math.max(0, this.life);
+        const displaySize = this.pulse ? this.size * (1 + Math.sin(this.pulsePhase) * 0.3) : this.size;
+
+        // Trail
+        if (this.trail.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(this.trail[0].x, this.trail[0].y);
+          for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+          ctx.strokeStyle = this.color + Math.floor(alpha * 40).toString(16).padStart(2, '0');
+          ctx.lineWidth = displaySize * 0.5;
+          ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.globalAlpha = alpha;
+        if (this.glow) { ctx.shadowBlur = 20; ctx.shadowColor = this.color; }
+        ctx.fillStyle = this.color;
+
+        if (this.text) {
+          ctx.font = `${displaySize * 4}px 'Courier New'`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(this.text, 0, 0);
+        } else if (this.shape === 'square') {
+          ctx.fillRect(-displaySize, -displaySize, displaySize * 2, displaySize * 2);
+        } else if (this.shape === 'triangle') {
+          ctx.beginPath();
+          ctx.moveTo(0, -displaySize);
+          ctx.lineTo(-displaySize, displaySize);
+          ctx.lineTo(displaySize, displaySize);
+          ctx.closePath();
+          ctx.fill();
+        } else if (this.shape === 'ring') {
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, displaySize, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, displaySize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      get dead() { return this.life <= 0; }
+    }
+
+    // ==================== MODE 0: NEBULA ====================
+    // 旋转星云，鼠标是引力中心，粒子带轨道
+    function spawnNebula() {
+      if (particles.length < 600 && Math.random() < 0.5) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 30 + Math.random() * 200;
+        const speed = 1 + Math.random() * 2.5;
+        particles.push(new Particle(
+          mouse.x + Math.cos(angle) * radius,
+          mouse.y + Math.sin(angle) * radius,
+          {
+            vx: Math.cos(angle + Math.PI / 2) * speed,
+            vy: Math.sin(angle + Math.PI / 2) * speed,
+            size: 1 + Math.random() * 2.5,
+            decay: 0.002 + Math.random() * 0.004,
+            glow: true,
+            trail: 15,
+            pulse: Math.random() > 0.6
+          }
+        ));
+      }
+    }
+
+    function drawNebulaBG() {
+      const t = Date.now() * 0.0005;
+      // Nebula clouds
+      for (let i = 0; i < 4; i++) {
+        const x = W * (0.2 + 0.6 * Math.sin(t + i * 1.5));
+        const y = H * (0.2 + 0.6 * Math.cos(t + i * 2.1));
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 250);
+        const p = getPalette();
+        g.addColorStop(0, p[i % p.length] + '15');
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+      // Grid
+      drawGrid('rgba(0, 255, 200, 0.03)');
+    }
+
+    // ==================== MODE 1: FIREWORK ====================
+    // 随机绽放烟花，有上升轨迹和绽放阶段
+    let fireworkRockets = [];
+    function spawnFirework() {
+      // Launch rockets
+      if (fireworkRockets.length < 3 && Math.random() < 0.03) {
+        const tx = 100 + Math.random() * (W - 200);
+        fireworkRockets.push({ x: Math.random() * W, y: H + 10, tx, ty: 100 + Math.random() * (H * 0.5), phase: 0 });
+      }
+      // Update rockets
+      fireworkRockets = fireworkRockets.filter(r => {
+        r.x += (r.tx - r.x) * 0.05;
+        r.y += (r.ty - r.y) * 0.05;
+        r.phase++;
+        // Trail
+        if (r.phase % 2 === 0) {
+          particles.push(new Particle(r.x, r.y, {
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: Math.random() * 0.5,
+            size: 1.5,
+            decay: 0.03,
+            color: '#ffaa00',
+            glow: true,
+            trail: 3
+          }));
+        }
+        // Explode
+        if (Math.abs(r.y - r.ty) < 20) {
+          const count = 50 + Math.floor(Math.random() * 50);
+          const c = randomColor();
+          for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 / count) * i;
+            const speed = 2 + Math.random() * 5;
+            particles.push(new Particle(r.x, r.y, {
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              color: c,
+              size: 1.5 + Math.random() * 2,
+              decay: 0.006 + Math.random() * 0.01,
+              gravity: 0.04,
+              friction: 0.96,
+              glow: true,
+              trail: 8
+            }));
+          }
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function drawFireworkBG() {
+      // Dark sky gradient
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#050510');
+      g.addColorStop(1, '#0a0a1a');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      // Stars
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      for (let i = 0; i < 50; i++) {
+        const sx = (i * 137.5 + Date.now() * 0.001) % W;
+        const sy = (i * 97.3) % (H * 0.6);
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+    }
+
+    // ==================== MODE 2: WARP ====================
+    // 星际跃迁，粒子从屏幕中心向外辐射，速度随鼠标距离变化
+    function spawnWarp() {
+      if (particles.length < 800) {
+        for (let i = 0; i < 5; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 0.5 + Math.random() * 1;
+          particles.push(new Particle(W / 2, H / 2, {
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 0.5 + Math.random() * 1,
+            decay: 0.001,
+            glow: true,
+            trail: 25,
+            friction: 0.998
+          }));
+        }
+      }
+    }
+
+    function drawWarpBG() {
+      // Speed lines from center
+      const t = Date.now() * 0.001;
+      ctx.strokeStyle = 'rgba(0, 150, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 30; i++) {
+        const angle = (Math.PI * 2 / 30) * i + t * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, H / 2);
+        ctx.lineTo(W / 2 + Math.cos(angle) * W, H / 2 + Math.sin(angle) * H);
+        ctx.stroke();
+      }
+      // Center glow
+      const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 200);
+      g.addColorStop(0, 'rgba(0, 100, 255, 0.15)');
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // ==================== MODE 3: GEOMETRY ====================
+    // 几何图形螺旋排列，鼠标控制螺旋中心
+    let geoAngle = 0;
+    function spawnGeometry() {
+      geoAngle += 0.03;
+      if (particles.length < 500 && Math.random() < 0.3) {
+        const shapes = ['circle', 'square', 'triangle', 'ring'];
+        const r = 60 + Math.sin(Date.now() * 0.002) * 40;
+        particles.push(new Particle(
+          mouse.x + Math.cos(geoAngle) * r,
+          mouse.y + Math.sin(geoAngle) * r,
+          {
+            vx: Math.cos(geoAngle + Math.PI / 2) * 1.2,
+            vy: Math.sin(geoAngle + Math.PI / 2) * 1.2,
+            shape: shapes[Math.floor(Math.random() * shapes.length)],
+            size: 3 + Math.random() * 6,
+            decay: 0.004,
+            glow: true,
+            trail: 5,
+            spin: (Math.random() - 0.5) * 0.2
+          }
+        ));
+      }
+    }
+
+    function drawGeometryBG() {
+      const t = Date.now() * 0.001;
+      // Rotating hex grid
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate(t * 0.05);
+      ctx.strokeStyle = 'rgba(255, 100, 100, 0.04)';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * W, Math.sin(a) * W);
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Concentric rings
+      ctx.strokeStyle = 'rgba(255, 200, 100, 0.03)';
+      for (let r = 80; r < Math.max(W, H); r += 80) {
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // ==================== MODE 4: DNA ====================
+    // DNA 双螺旋结构，从左到右流动
+    function spawnDNA() {
+      if (particles.length < 600) {
+        const t = Date.now() * 0.003;
+        for (let i = 0; i < 3; i++) {
+          const px = (Date.now() * 0.15 + i * 200) % (W + 200) - 100;
+          const phase = t + px * 0.004;
+          for (let strand = -1; strand <= 1; strand += 2) {
+            const py = H / 2 + Math.sin(phase) * 140 * strand;
+            const depth = Math.cos(phase); // for 3D effect
+            particles.push(new Particle(px, py, {
+              vx: 0.3,
+              vy: Math.cos(phase) * strand * 0.3,
+              color: strand > 0 ? '#00ff88' : '#00ccff',
+              size: 1.5 + (depth + 1) * 2,
+              decay: 0.005,
+              glow: depth > 0,
+              trail: 4
+            }));
+          }
+          // Rungs
+          if (Math.random() < 0.15) {
+            const py1 = H / 2 + Math.sin(phase) * 140;
+            particles.push(new Particle(px, H / 2, {
+              vx: 0.3,
+              vy: 0,
+              color: '#ffffff',
+              size: 0.5,
+              decay: 0.015,
+              trail: 0,
+              shape: 'square'
+            }));
+          }
+        }
+      }
+    }
+
+    function drawDNABG() {
+      // Horizontal flow lines
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.02)';
+      ctx.lineWidth = 0.5;
+      for (let y = 0; y < H; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x < W; x += 20) {
+          ctx.lineTo(x, y + Math.sin(x * 0.01 + Date.now() * 0.001) * 10);
+        }
+        ctx.stroke();
+      }
+      // Center line
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.06)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, H / 2);
+      ctx.lineTo(W, H / 2);
+      ctx.stroke();
+    }
+
+    // ==================== MODE 5: MATRIX ====================
+    // 黑客帝国数字雨，字符从上往下掉落
+    const matrixChars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノ';
+    function spawnMatrix() {
+      if (particles.length < 800) {
+        const col = Math.floor(Math.random() * (W / 16));
+        const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        const isHead = Math.random() > 0.7;
+        particles.push(new Particle(col * 16 + 8, -10, {
+          vx: 0,
+          vy: 1.5 + Math.random() * 3,
+          color: isHead ? '#ffffff' : '#00ff00',
+          size: isHead ? 3 : 1.5 + Math.random() * 2,
+          decay: 0.002,
+          glow: isHead,
+          trail: isHead ? 6 : 2,
+          text: char,
+          shape: null
+        }));
+      }
+    }
+
+    function drawMatrixBG() {
+      // Dark green tint
+      ctx.fillStyle = 'rgba(0, 5, 0, 0.03)';
+      ctx.fillRect(0, 0, W, H);
+      // Faint columns
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.015)';
+      for (let x = 0; x < W; x += 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+    }
+
+    // ==================== DRAW HELPERS ====================
+    function drawGrid(color) {
+      const gridSize = 60;
+      const ox = (mouse.x * 0.02) % gridSize;
+      const oy = (mouse.y * 0.02) % gridSize;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.5;
+      for (let x = -gridSize + ox; x < W + gridSize; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = -gridSize + oy; y < H + gridSize; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+    }
+
+    function drawConnections(color = 'rgba(0, 255, 200, 0.12)') {
+      const maxDist = 100;
+      const sample = particles.filter((_, i) => i % 4 === 0);
+      for (let i = 0; i < sample.length; i++) {
+        for (let j = i + 1; j < Math.min(i + 20, sample.length); j++) {
+          const dx = sample[i].x - sample[j].x;
+          const dy = sample[i].y - sample[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < maxDist * maxDist) {
+            ctx.globalAlpha = (1 - Math.sqrt(d2) / maxDist) * 0.5;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(sample[i].x, sample[i].y);
+            ctx.lineTo(sample[j].x, sample[j].y);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+    }
+
+    // ==================== EXPLODE ====================
+    function explode(x, y, count = 80) {
+      energy = Math.max(0, energy - 8);
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 8;
+        particles.push(new Particle(x, y, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1 + Math.random() * 3,
+          decay: 0.005 + Math.random() * 0.012,
+          gravity: 0.015,
+          friction: 0.97,
+          glow: true,
+          trail: 10
+        }));
+      }
+      // Shockwave
+      for (let i = 0; i < 40; i++) {
+        const angle = (Math.PI * 2 / 40) * i;
+        particles.push(new Particle(x, y, {
+          vx: Math.cos(angle) * 8,
+          vy: Math.sin(angle) * 8,
+          size: 1,
+          decay: 0.04,
+          color: '#ffffff',
+          glow: true,
+          trail: 12,
+          friction: 0.93
+        }));
+      }
+    }
+
+    // ==================== MODE TABLE ====================
+    const bgDrawers = [drawNebulaBG, drawFireworkBG, drawWarpBG, drawGeometryBG, drawDNABG, drawMatrixBG];
+    const spawnFns = [spawnNebula, spawnFirework, spawnWarp, spawnGeometry, spawnDNA, spawnMatrix];
+    const modeConnections = [true, false, false, false, true, false];
+    const modeTextColors = [
+      'rgba(0, 255, 200, 0.8)',
+      'rgba(255, 170, 0, 0.8)',
+      'rgba(0, 150, 255, 0.8)',
+      'rgba(255, 100, 100, 0.8)',
+      'rgba(0, 255, 136, 0.8)',
+      'rgba(0, 255, 0, 0.8)',
+    ];
+
+    // ==================== MAIN LOOP ====================
+    function update() {
+      frameCount++;
+      const now = Date.now();
+      if (now - lastFpsTime > 500) {
+        fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+      energy = Math.min(100, energy + 0.12);
+      if (waveActive) waveTime += 0.1;
+      spawnFns[currentMode]();
+      particles = particles.filter(p => { p.update(); return !p.dead; });
+      if (particles.length > 1500) particles.splice(0, particles.length - 1500);
+    }
+
+    function draw() {
+      // Trail fade
+      trailCtx.fillStyle = 'rgba(10, 10, 15, 0.12)';
+      trailCtx.fillRect(0, 0, W, H);
+      ctx.clearRect(0, 0, W, H);
+
+      // Mode-specific background
+      bgDrawers[currentMode]();
+
+      // Connections
+      if (modeConnections[currentMode]) drawConnections();
+
+      // Particles
+      particles.forEach(p => p.draw());
+
+      // Mouse glow
+      if (mouse.down) {
+        const g = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 150);
+        g.addColorStop(0, modeTextColors[currentMode].replace('0.8', '0.12'));
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 150, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Crosshair
+      ctx.strokeStyle = modeTextColors[currentMode].replace('0.8', '0.08');
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(mouse.x - 15, mouse.y); ctx.lineTo(mouse.x + 15, mouse.y);
+      ctx.moveTo(mouse.x, mouse.y - 15); ctx.lineTo(mouse.x, mouse.y + 15);
+      ctx.stroke();
+
+      // HUD
+      document.getElementById('hudMode').textContent = `MODE: ${modes[currentMode]}`;
+      document.getElementById('hudMode').style.color = modeTextColors[currentMode];
+      document.getElementById('hudParticles').textContent = `PARTICLES: ${particles.length}`;
+      document.getElementById('hudFps').textContent = `FPS: ${fps}`;
+      document.getElementById('hudMouse').textContent = `MOUSE: ${Math.round(mouse.x)}, ${Math.round(mouse.y)}`;
+      document.getElementById('hudTime').textContent = `UPTIME: ${Math.round((Date.now() - startTime) / 1000)}s`;
+      document.getElementById('hudEnergy').textContent = `ENERGY: ${Math.round(energy)}%`;
+
+      update();
+      requestAnimationFrame(draw);
+    }
+
+    // ==================== INPUT ====================
+    function flashMode(name) {
+      const el = document.getElementById('modeDisplay');
+      el.textContent = name;
+      el.style.textShadow = `0 0 40px ${modeTextColors[currentMode]}`;
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 1200);
+    }
+
+    function switchMode(index) {
+      currentMode = index;
+      particles = [];
+      fireworkRockets = [];
+      flashMode(modes[index]);
+      energy = Math.min(100, energy + 20);
+      // Update mode bar
+      document.querySelectorAll('.mode-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+    }
+
+    // Mode bar click
+    document.getElementById('modeBar').addEventListener('click', e => {
+      const btn = e.target.closest('.mode-btn');
+      if (btn) switchMode(parseInt(btn.dataset.mode));
+    });
+
+    let spaceHeld = false;
+    window.addEventListener('keydown', e => {
+      if (e.key >= '1' && e.key <= '6') switchMode(parseInt(e.key) - 1);
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (!spaceHeld) { spaceHeld = true; waveActive = true; flashMode('WAVE'); }
+      }
+      if (e.key.toLowerCase() === 'r') { particles = []; fireworkRockets = []; flashMode('RESET'); }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.key === ' ') { e.preventDefault(); waveActive = false; spaceHeld = false; }
+    });
+
+    mainCanvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    mainCanvas.addEventListener('mousedown', e => { mouse.down = true; explode(e.clientX, e.clientY, 50); });
+    mainCanvas.addEventListener('mouseup', () => { mouse.down = false; });
+    mainCanvas.addEventListener('click', e => { explode(e.clientX, e.clientY, 100); });
+
+    // Touch
+    mainCanvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY;
+      mouse.down = true;
+      explode(mouse.x, mouse.y, 50);
+    }, { passive: false });
+    mainCanvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY;
+    }, { passive: false });
+    mainCanvas.addEventListener('touchend', () => { mouse.down = false; });
+
+    // ==================== START ====================
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('done');
+        flashMode('SANDBOX');
+      }, 1200);
+      draw();
+    });
+  </script>
+</body>
+</html>
