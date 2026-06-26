@@ -85,7 +85,13 @@
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       backdrop-filter: blur(12px);
+      max-width: calc(100vw - 32px);
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
+    .mode-bar::-webkit-scrollbar { display: none; }
     .mode-btn {
       padding: 8px 16px;
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -97,6 +103,8 @@
       letter-spacing: 1px;
       cursor: pointer;
       transition: all 0.3s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .mode-btn:hover {
       color: rgba(255, 255, 255, 0.7);
@@ -608,37 +616,49 @@
     }
 
     // ==================== MODE 4: DNA ====================
-    // DNA 双螺旋结构，从左到右流动
+    // 粒子流式双螺旋
+    let dnaScrollX = 0;
+    const DNA_SPACING = 60; // 粒子间距，越小越密
+
     function spawnDNA() {
-      if (particles.length < 600) {
-        const t = Date.now() * 0.003;
-        for (let i = 0; i < 3; i++) {
-          const px = (Date.now() * 0.15 + i * 200) % (W + 200) - 100;
-          const phase = t + px * 0.004;
-          for (let strand = -1; strand <= 1; strand += 2) {
-            const py = H / 2 + Math.sin(phase) * 140 * strand;
-            const depth = Math.cos(phase); // for 3D effect
-            particles.push(new Particle(px, py, {
-              vx: 0.3,
-              vy: Math.cos(phase) * strand * 0.3,
-              color: strand > 0 ? '#00ff88' : '#00ccff',
-              size: 1.5 + (depth + 1) * 2,
-              decay: 0.005,
-              glow: depth > 0,
-              trail: 4
-            }));
-          }
-          // Rungs
-          if (Math.random() < 0.15) {
-            const py1 = H / 2 + Math.sin(phase) * 140;
-            particles.push(new Particle(px, H / 2, {
-              vx: 0.3,
+      dnaScrollX += 1.2;
+      const t = Date.now() * 0.003;
+      const amp = 140;
+
+      // 沿整条螺旋线均匀撒点，两条链 + 横档
+      for (let x = 0; x < W; x += DNA_SPACING) {
+        const phase = t + (x + dnaScrollX) * 0.003;
+        const depth = Math.cos(phase);
+
+        // 两条链
+        for (let strand = -1; strand <= 1; strand += 2) {
+          const py = H / 2 + Math.sin(phase) * amp * strand;
+          particles.push(new Particle(x + Math.random() * 4, py + Math.random() * 4, {
+            vx: 0,
+            vy: 0,
+            color: strand > 0 ? '#00ff88' : '#00ccff',
+            size: 1.2 + (depth + 1) * 1.5,
+            decay: 0.025,
+            glow: depth > 0,
+            trail: 3
+          }));
+        }
+
+        // 横档（每隔一个间距画一条）
+        if (x % (DNA_SPACING * 2) === 0) {
+          const y1 = H / 2 + Math.sin(phase) * amp;
+          const y2 = H / 2 - Math.sin(phase) * amp;
+          const rungCount = 2;
+          for (let r = 0; r <= rungCount; r++) {
+            const ry = y1 + (y2 - y1) * (r / rungCount);
+            particles.push(new Particle(x, ry, {
+              vx: 0,
               vy: 0,
               color: '#ffffff',
-              size: 0.5,
-              decay: 0.015,
-              trail: 0,
-              shape: 'square'
+              size: 0.6,
+              decay: 0.025,
+              glow: false,
+              trail: 0
             }));
           }
         }
@@ -646,17 +666,13 @@
     }
 
     function drawDNABG() {
-      // Horizontal flow lines
-      ctx.strokeStyle = 'rgba(0, 255, 136, 0.02)';
-      ctx.lineWidth = 0.5;
-      for (let y = 0; y < H; y += 40) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x < W; x += 20) {
-          ctx.lineTo(x, y + Math.sin(x * 0.01 + Date.now() * 0.001) * 10);
-        }
-        ctx.stroke();
-      }
+      // 中轴线
+      ctx.strokeStyle = 'rgba(0, 200, 255, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, H / 2);
+      ctx.lineTo(W, H / 2);
+      ctx.stroke();
       // Center line
       ctx.strokeStyle = 'rgba(0, 200, 255, 0.06)';
       ctx.lineWidth = 1;
@@ -798,7 +814,7 @@
       if (waveActive) waveTime += 0.1;
       spawnFns[currentMode]();
       particles = particles.filter(p => { p.update(); return !p.dead; });
-      if (particles.length > 1500) particles.splice(0, particles.length - 1500);
+      if (particles.length > 3000) particles.splice(0, particles.length - 3000);
     }
 
     function draw() {
