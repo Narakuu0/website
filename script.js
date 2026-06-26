@@ -115,7 +115,7 @@ function copyText(elementId) {
 // ===== 留言板（YesAPI） =====
 const YESAPI_APP_KEY = 'C4E8DAB50F101FEF0A1FCF65CC21A7C1';
 const YESAPI_SECRET = '0a8CLQRiXcJ1BHbpgCMiEN6EgZQGaUidFKFxYHqLAcfV039LjRuVNr4N827ieZhf';
-const YESAPI_BASE = 'https://hn216.api.yesapi.cn/api.php';
+const YESAPI_BASE = 'https://yesapi-proxy.narakuu0.workers.dev/api.php';
 const TABLE_NAME = 'message';
 
 const form = document.getElementById('guestbookForm');
