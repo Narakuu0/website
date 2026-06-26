@@ -273,6 +273,13 @@ a {
   color: #fff;
 }
 
+.carousel-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
 .photo-icon {
   font-size: 3.5rem;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));
@@ -538,9 +545,63 @@ a {
   color: var(--text-light);
 }
 
+.message-contact {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  background: rgba(99, 102, 241, 0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
 .message-content {
   color: var(--text-light);
   line-height: 1.7;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 28px;
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  padding: 0 2px;
+  user-select: none;
 }
 
 /* ===== Contact ===== */
